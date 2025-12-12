@@ -8,6 +8,10 @@
 const USE_BACKEND = false; // Set to true when you add a backend
 const BACKEND_URL = 'http://localhost:8000/api'; // Your backend URL
 
+// AI Configuration (Frontend-only mode)
+const USE_OPENAI_WHISPER = false; // Set to true to use OpenAI Whisper for speech
+// Note: Requires user to provide API key in settings (stored in localStorage)
+
 // =============================================================================
 // DATA STORAGE INTERFACE
 // =============================================================================
@@ -59,6 +63,24 @@ class DataAPI {
     async getPassage() {
         return await this.storage.getPassage();
     }
+
+    // OpenAI integration (Frontend-only)
+    getOpenAIKey() {
+        return this.storage.getOpenAIKey ? this.storage.getOpenAIKey() : '';
+    }
+
+    setOpenAIKey(key) {
+        if (this.storage.setOpenAIKey) {
+            this.storage.setOpenAIKey(key);
+        }
+    }
+
+    async transcribeAudio(audioBlob) {
+        if (this.storage.transcribeAudio) {
+            return await this.storage.transcribeAudio(audioBlob);
+        }
+        throw new Error('Transcription not available');
+    }
 }
 
 // =============================================================================
@@ -69,7 +91,8 @@ class LocalStorage {
     constructor() {
         this.KEYS = {
             ASSESSMENTS: 'braingauge_assessments',
-            BASELINE: 'braingauge_baseline'
+            BASELINE: 'braingauge_baseline',
+            OPENAI_API_KEY: 'braingauge_openai_key'
         };
 
         this.PASSAGES = [
@@ -77,6 +100,44 @@ class LocalStorage {
             "Climate change affects ecosystems worldwide. Rising temperatures impact wildlife habitats and migration patterns. Conservation efforts require global cooperation and sustainable practices. Every individual action contributes to environmental protection.",
             "Technology advances at an unprecedented pace. Artificial intelligence transforms industries and daily life. Innovation drives progress while raising ethical questions. Society must adapt to rapid technological change."
         ];
+    }
+
+    // OpenAI API Key management
+    getOpenAIKey() {
+        return localStorage.getItem(this.KEYS.OPENAI_API_KEY) || '';
+    }
+
+    setOpenAIKey(key) {
+        localStorage.setItem(this.KEYS.OPENAI_API_KEY, key);
+    }
+
+    // Transcribe audio using OpenAI Whisper API
+    async transcribeAudio(audioBlob) {
+        const apiKey = this.getOpenAIKey();
+
+        if (!apiKey) {
+            throw new Error('OpenAI API key not set. Please add it in Settings.');
+        }
+
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'recording.webm');
+        formData.append('model', 'whisper-1');
+
+        const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: formData
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error?.message || 'Transcription failed');
+        }
+
+        const result = await response.json();
+        return result.text;
     }
 
     async saveAssessment(assessment) {

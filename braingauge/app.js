@@ -1196,9 +1196,13 @@ function Insights() {
 
 function Profile() {
     const [stats, setStats] = useState({ totalWeeks: 0, avgScore: 0 });
+    const [apiKey, setApiKey] = useState('');
+    const [showApiKey, setShowApiKey] = useState(false);
+    const [apiKeyStatus, setApiKeyStatus] = useState('');
 
     useEffect(() => {
         loadStats();
+        setApiKey(API.getOpenAIKey());
     }, []);
 
     const loadStats = async () => {
@@ -1256,6 +1260,31 @@ function Profile() {
         }
     };
 
+    const handleSaveApiKey = () => {
+        if (!apiKey.trim()) {
+            setApiKeyStatus('Please enter an API key');
+            return;
+        }
+
+        if (!apiKey.startsWith('sk-')) {
+            setApiKeyStatus('Invalid API key format. Should start with sk-');
+            return;
+        }
+
+        API.setOpenAIKey(apiKey.trim());
+        setApiKeyStatus('✓ API key saved successfully!');
+        setTimeout(() => setApiKeyStatus(''), 3000);
+    };
+
+    const handleClearApiKey = () => {
+        if (confirm('Remove OpenAI API key?')) {
+            API.setOpenAIKey('');
+            setApiKey('');
+            setApiKeyStatus('API key removed');
+            setTimeout(() => setApiKeyStatus(''), 3000);
+        }
+    };
+
     return (
         <div className="profile">
             <div className="card">
@@ -1269,6 +1298,81 @@ function Profile() {
                 <div className="metric-row">
                     <span className="metric-label">Average Neuro Load Score</span>
                     <span className="metric-value">{stats.avgScore || '--'}</span>
+                </div>
+            </div>
+
+            <div className="card">
+                <h2 className="card-title">OpenAI Settings (Optional)</h2>
+                <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '1rem' }}>
+                    Add your OpenAI API key to use Whisper AI for more accurate speech transcription.
+                    If not provided, the app will use your browser's built-in speech recognition.
+                </p>
+
+                <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#333' }}>
+                        OpenAI API Key
+                    </label>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                        <input
+                            type={showApiKey ? 'text' : 'password'}
+                            value={apiKey}
+                            onChange={(e) => setApiKey(e.target.value)}
+                            placeholder="sk-..."
+                            style={{
+                                flex: 1,
+                                padding: '0.75rem',
+                                border: '1px solid #e0e0e0',
+                                borderRadius: '8px',
+                                fontSize: '0.9rem'
+                            }}
+                        />
+                        <button
+                            className="button button-secondary"
+                            onClick={() => setShowApiKey(!showApiKey)}
+                            style={{ width: 'auto', marginTop: 0, padding: '0.75rem 1rem' }}
+                        >
+                            {showApiKey ? '👁️' : '👁️‍🗨️'}
+                        </button>
+                    </div>
+
+                    {apiKeyStatus && (
+                        <p style={{
+                            fontSize: '0.85rem',
+                            color: apiKeyStatus.includes('✓') ? '#155724' : '#856404',
+                            marginBottom: '0.5rem'
+                        }}>
+                            {apiKeyStatus}
+                        </p>
+                    )}
+
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                            className="button"
+                            onClick={handleSaveApiKey}
+                            style={{ flex: 1, marginTop: 0 }}
+                        >
+                            💾 Save API Key
+                        </button>
+                        {apiKey && (
+                            <button
+                                className="button button-secondary"
+                                onClick={handleClearApiKey}
+                                style={{ flex: 1, marginTop: 0 }}
+                            >
+                                🗑️ Clear
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                <div style={{ background: '#e7f3ff', padding: '1rem', borderRadius: '8px', fontSize: '0.85rem' }}>
+                    <p style={{ marginBottom: '0.5rem', color: '#004085' }}>
+                        <strong>🔒 Privacy:</strong> Your API key is stored only in your browser's localStorage and never sent anywhere except directly to OpenAI's API.
+                    </p>
+                    <p style={{ margin: 0, color: '#004085' }}>
+                        <strong>💰 Cost:</strong> OpenAI Whisper API costs ~$0.006 per minute of audio (~$0.36 per hour).
+                        Get your key at: <a href="https://platform.openai.com/api-keys" target="_blank" style={{ color: '#004085', textDecoration: 'underline' }}>platform.openai.com/api-keys</a>
+                    </p>
                 </div>
             </div>
 
